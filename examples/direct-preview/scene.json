@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "model_id": "synthetic-demo",
+  "scene_revision": 1,
+  "coordinate_system": "local_enu_m",
+  "north_rotation_deg": 0,
+  "origin_model_inches": [0,0,0],
+  "surfaces": [
+    {"id":"shaded-floor","role":"ground","triangles":[[[0,0,0],[2,0,0],[0,2,0]]]},
+    {"id":"exposed-floor","role":"ground","triangles":[[[4,0,0],[6,0,0],[4,2,0]]]},
+    {"id":"shade","role":"shade","triangles":[[[-1,-1,1],[3,-1,1],[-1,3,1]]]}
+  ],
+  "diagnostics": [{"code":"SYNTHETIC_DEMO","message":"合成遮挡案例，并非真实深圳项目。"}]
+}

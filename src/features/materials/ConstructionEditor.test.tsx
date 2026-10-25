@@ -55,3 +55,28 @@ it('preserves optical metadata while editing thermal properties', async () => {
   fireEvent.click(screen.getByRole('button', { name: '保存构造' }))
   await waitFor(() => expect(saved).toMatchObject({ materials: [{ solar_absorptance: 0.7, solar_reflectance: 0.3, solar_transmittance: 0 }] }))
 })
+it('loads the saved host construction before allowing it to be edited', async () => {
+  const value = { ...sampleConstruction(), name: '模型内的构造', id: 'model-wall' }
+  window.sketchup = { zhitan_request: raw => {
+    const request = JSON.parse(raw)
+    window.ZhitanBridge!.receive({ ...request, model_id: 'model-1', payload: { saved_construction: value } })
+  } }
+  try {
+    render(<App />)
+    await waitFor(() => expect((screen.getByLabelText('构造名称') as HTMLInputElement).value).toBe('模型内的构造'))
+  } finally { cleanup(); delete window.sketchup; delete window.ZhitanBridge }
+})
+it('refreshes saved constructions when switching host models', async () => {
+  let name = '第一栋建筑'
+  window.sketchup = { zhitan_request: raw => {
+    const request = JSON.parse(raw)
+    window.ZhitanBridge!.receive({ ...request, model_id: name, payload: { saved_construction: { ...sampleConstruction(), name } } })
+  } }
+  try {
+    render(<App />)
+    await waitFor(() => expect((screen.getByLabelText('构造名称') as HTMLInputElement).value).toBe('第一栋建筑'))
+    name = '第二栋建筑'
+    fireEvent(window, new CustomEvent('zhitan:model-changed'))
+    await waitFor(() => expect((screen.getByLabelText('构造名称') as HTMLInputElement).value).toBe('第二栋建筑'))
+  } finally { cleanup(); delete window.sketchup; delete window.ZhitanBridge }
+})

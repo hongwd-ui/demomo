@@ -138,3 +138,11 @@
 - 类型和字段以协议为唯一命名来源；不混用 camelCase 与线上 snake_case。
 - Review Focus 五类失败均映射到任务测试。
 - Windows 实机、C++ 编译和 Radiance 基准尚未执行；不将文档完成等同于插件完成。
+
+## 本次执行状态（2026-10-25）
+
+任务 1–3 已实施并测试。任务 5 的独立服务与 CLI 已实施并通过 CTest。
+任务 4/6 已有 Ruby 适配代码与可移植测试，但 Windows 实机验收未执行，保持待验收状态。
+完整证据和独立审阅修复见 [验证记录](../../validation/first-slice-results.md)。
+后续优先执行 [Windows 矩阵](../../validation/sketchup-matrix.md)，再接自动进程联动与真实 EPW。
+原任务中没有实际执行的验收项不勾选，不把计划中的命令当作完成证据。

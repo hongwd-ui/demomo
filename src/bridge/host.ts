@@ -1,3 +1,4 @@
+import { newId } from '../domain/id'
 import { parseEnvelope } from './protocol'
 import type { Envelope, RequestType } from './protocol'
 declare global {
@@ -36,7 +37,7 @@ export function createHostBridge(): HostBridge {
       return new Promise((resolve, reject) => {
         if (disposed) { reject(new Error('连接已关闭')); return }
         if (typeof host?.zhitan_request !== 'function') { reject(new Error('未连接 SketchUp')); return }
-        const request_id = crypto.randomUUID()
+        const request_id = newId()
         try {
           const message = parseEnvelope({ protocol_version: 1, request_id, type, model_id: 'unbound', scene_revision: 0, payload })
           const timer = setTimeout(() => { pending.delete(request_id); reject(new Error('宿主请求超时')) }, 10000)

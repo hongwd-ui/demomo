@@ -84,3 +84,17 @@ weather_hash?, material_hash, created_at, quality, metric, unit, samples, diagno
 
 任务状态：`queued → running → completed | failed | cancelled`；过期是客户端结果属性。
 进度单调不减；取消请求与完成事件竞态时，前端以当前 revision 和任务身份决定接收，不能串结果。
+
+## 当前宿主适配器补充
+
+`host.capabilities` 返回 `saved_construction: ConstructionAggregate | null`。
+`ConstructionAggregate` 在协议构造字段外携带 `materials: Material[]`，由材料 ID 解析构造层。
+前端必须先完成读取，不能用本地浏览器演示参数覆盖宿主中已有构造。
+`request.error` 是同步请求失败响应，payload 包含 code/message/retryable。
+
+宿主以固定 CustomEvent `zhitan:model-changed` 通知重读构造，
+以 `zhitan:scene-invalidated` 通知结果失效；事件无用户可执行文本。
+当前 `analysis.start/cancel` 仅在独立 worker 中实现；Ruby 面板尚未启动该服务。
+worker settings 明确为 `sun_direction_enu: [number,number,number]` 与 `dni_w_m2: number`。
+结果当前使用 `created_at_unix_ms`；settings_hash 是注明算法的非安全指纹，仅用于复现标识。
+当前所有遮挡按不透明处理，每三角形一个采样点，不是完整辐射或透射模型。

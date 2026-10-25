@@ -3,21 +3,55 @@ import { ConstructionEditor } from './features/materials/ConstructionEditor'
 import { ResultPanel } from './features/results/ResultPanel'
 import { createHostBridge } from './bridge/host'
 import type { HostBridge } from './bridge/host'
-import { loadLocalConstruction, saveLocalConstruction } from './bridge/demo'
+import { defaultConstruction, loadLocalConstruction, saveLocalConstruction } from './bridge/demo'
+import { validateConstruction } from './domain/construction'
 import type { OpaqueConstruction } from './domain/construction'
 import './App.css'
 
 function App() {
   const [initial] = useState(loadLocalConstruction)
   const bridgeRef = useRef<HostBridge | null>(null)
+  const [hostData, setHostData] = useState<{ key: string; value: OpaqueConstruction } | null>(null)
+  const [hostError, setHostError] = useState('')
   const [status, setStatus] = useState('')
   const [active, setActive] = useState('工作台')
   const [north, setNorth] = useState('0')
-  useEffect(() => { const host = createHostBridge(); bridgeRef.current = host; return () => { host.dispose(); bridgeRef.current = null } }, [])
+  useEffect(() => {
+    const host = createHostBridge(); bridgeRef.current = host
+    let live = true, generation = 0
+    async function loadHost() {
+      const requested = ++generation
+      try {
+        const reply = await host.request('host.capabilities', {})
+        if (!live || requested !== generation) return
+        if (!Object.prototype.hasOwnProperty.call(reply.payload, 'saved_construction')) throw new Error('宿主未提供构造读取能力，请更新插件')
+        const value = reply.payload.saved_construction === null ? defaultConstruction() : reply.payload.saved_construction
+        const checked = validateConstruction(value)
+        if (!checked.ok) throw new Error('模型中的构造数据无效，已阻止覆盖保存')
+        setHostData({ key: `${reply.model_id}-${requested}`, value: checked.value })
+        setHostError('')
+      } catch (error) {
+        if (live && requested === generation) setHostError(error instanceof Error ? error.message : '读取模型构造失败')
+      }
+    }
+    const reload = () => { setHostData(null); setHostError(''); void loadHost() }
+    const invalidate = () => setStatus('模型已变更，已有分析已失效；请重新提取并计算。')
+    if (host.connected) void loadHost()
+    window.addEventListener('zhitan:model-changed', reload)
+    window.addEventListener('zhitan:retry-host', reload)
+    window.addEventListener('zhitan:scene-invalidated', invalidate)
+    return () => {
+      live = false; host.dispose(); bridgeRef.current = null
+      window.removeEventListener('zhitan:model-changed', reload)
+      window.removeEventListener('zhitan:retry-host', reload)
+      window.removeEventListener('zhitan:scene-invalidated', invalidate)
+    }
+  }, [])
   const connected = typeof window !== 'undefined' && typeof window.sketchup?.zhitan_request === 'function'
   async function save(value: OpaqueConstruction) {
     const bridge = bridgeRef.current
     if (connected && bridge) {
+      if (!hostData) throw new Error('模型构造尚未读取，禁止保存')
       await bridge.request('construction.save', { construction: value })
       setStatus('构造已保存到 SketchUp；应用到模型后需重新计算。')
     } else {
@@ -41,7 +75,7 @@ function App() {
       <header className="topbar"><div className="breadcrumb">项目空间 <span>/</span> 智碳工作台</div><span className={`connection ${connected ? 'online' : ''}`}><i />{connected ? '宿主桥接已检测 · 引擎待验证' : '演示模式，未连接 SketchUp'}</span></header>
       <main>
         <div className="page-heading"><div><span className="eyebrow">BUILD BETTER. THINK CARBON.</span><h1>让设计，看见性能<span>。</span></h1><p>从一层材料开始，理解建筑与环境的关系。</p></div><button className="secondary-button" disabled={!connected} onClick={exportScene}>↗ 提取模型</button></div>
-        {initial.warning && <div className="notice warning">{initial.warning}</div>}
+        {!connected && initial.warning && <div className="notice warning">{initial.warning}</div>}
         <div className="notice"><span>i</span><p>当前提供真实的一维构造 U 值计算。辐射热力图、气象联动与规范结论需接入并验证对应数据及引擎。</p></div>
         <div className="workspace-grid"><div className="main-column">
           <section className="card solar-card"><div className="section-heading"><div><span className="eyebrow">SOLAR RADIATION</span><h2>太阳辐射分析</h2></div><span className="pill muted">引擎未连接</span></div>
@@ -53,7 +87,7 @@ function App() {
           <section className="report-note" id="reports-note"><b>分析报告</b><p>报告模块尚未实现；当前没有可导出的专业分析结论。</p></section>
         </div><div className="side-column">
           <section className="card location-card"><div className="section-heading"><div><span className="eyebrow">SITE & CLIMATE</span><h2 id="location-title">气象与场地</h2></div><span className="location-icon">⌖</span></div><div className="city-line"><strong>深圳</strong><span>广东 · 中国</span></div><div className="coordinates"><span>22.54° N</span><span>114.06° E</span><span>UTC +08:00</span></div><label className="north-field">真北偏转角（°）<input type="number" min="-180" max="180" value={north} onChange={e => setNorth(e.target.value)} /></label><p className="helper">场地示例值，尚未写入模型。真实气象文件未载入。</p><div className="weather-status"><span>EPW 气象数据</span><b>待导入</b></div></section>
-          <ConstructionEditor value={initial.value} onSave={save} />
+          {!connected || hostData ? <ConstructionEditor key={hostData?.key || 'local'} value={hostData?.value || initial.value} onSave={save} /> : <section className="card host-loading"><h2>节能构造编辑器</h2><p>{hostError || '正在读取当前模型构造…'}</p>{hostError && <button className="secondary-button" onClick={() => window.dispatchEvent(new Event('zhitan:retry-host'))}>重试连接</button>}</section>}
         </div></div>
         <div className="status-line" role="status" aria-live="polite">{status || '就绪 · 构造参数为演示输入，请用产品资料替换。'}</div>
       </main><footer className="page-footer"><span>智碳 · 设计阶段性能分析</span><span>计算可追溯 · 结论有依据</span></footer>

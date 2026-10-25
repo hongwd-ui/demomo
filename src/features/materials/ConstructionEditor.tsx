@@ -1,3 +1,4 @@
+import { newId } from '../../domain/id'
 import { useState } from 'react'
 import { calculateUValue, validateConstruction } from '../../domain/construction'
 import type { Material, OpaqueConstruction } from '../../domain/construction'
@@ -46,7 +47,7 @@ export function ConstructionEditor({ value, onSave }: { value: OpaqueConstructio
       <input type="number" step="any" min="0" aria-label={`第 ${i + 1} 层导热系数`} value={layer.conductivity} onChange={e => change(i, 'conductivity', e.target.value)} />
       <button className="icon-button" aria-label={`删除第 ${i + 1} 层`} disabled={layers.length === 1 || saving} onClick={() => { setLayers(previous => previous.filter((_, index) => index !== i)); setMessage('') }}>×</button>
     </div>)}</div>
-    <button className="add-layer" aria-label="添加材料层" disabled={saving} onClick={() => { setLayers(previous => [...previous, { key: crypto.randomUUID(), name: '新材料（请填写）', thickness: '20', conductivity: '1' }]); setMessage('') }}>＋ 添加材料层</button>
+    <button className="add-layer" aria-label="添加材料层" disabled={saving} onClick={() => { setLayers(previous => [...previous, { key: newId(), name: '新材料（请填写）', thickness: '20', conductivity: '1' }]); setMessage('') }}>＋ 添加材料层</button>
     <div className="resistance-fields"><label>内表面热阻 Rsi<input type="number" step="any" min="0" value={rsi} onChange={e => { setRsi(e.target.value); setMessage('') }} /></label><label>外表面热阻 Rse<input type="number" step="any" min="0" value={rse} onChange={e => { setRse(e.target.value); setMessage('') }} /></label></div>
     <p className="helper">表面热阻单位 m²·K/W；需按适用条件核对。层剖面仅为示意。</p>
     <div className="u-value"><div><span>构造传热系数 U</span><strong aria-label="构造传热系数">{u === null ? '—' : u.toFixed(3)} <small>W/(m²·K)</small></strong></div><span className="calculation-mark">Σ d / λ</span></div>

@@ -77,3 +77,11 @@ describe('host bridge lifecycle', () => {
     bridge.dispose()
   })
 })
+it('can issue requests when old Chromium lacks crypto.randomUUID', async () => {
+  const original = crypto.randomUUID
+  Object.defineProperty(crypto, 'randomUUID', { configurable: true, value: undefined })
+  window.sketchup = { zhitan_request: raw => window.ZhitanBridge!.receive(JSON.parse(raw)) }
+  const bridge = createHostBridge()
+  try { expect((await bridge.request('host.capabilities', {})).request_id).toMatch(/^[a-f0-9-]{36}$/) }
+  finally { bridge.dispose(); Object.defineProperty(crypto, 'randomUUID', { configurable: true, value: original }) }
+})
